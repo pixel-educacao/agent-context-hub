@@ -1,79 +1,118 @@
 # Agent Context Hub
 
-> **The pattern:** every signal that reaches your AI agent — meetings, chat, email, calendar — gets appended to one unified, append-only **Context Ledger**. The ledger is an index, not storage: it answers *"what came in, from whom, when"* so your agent always knows its own recent context without loading raw data.
+**Guia técnico do motor de contexto e de sua conexão com memória, motor de ideias e produção de conteúdo.** Para quem precisa entender a arquitetura, discutir decisões e reproduzir o método sem receber o cérebro privado de uma pessoa.
 
-Built from lessons learned running this exact system in production for a founder's second brain (WhatsApp, Gmail, Granola, Fathom, calendar invites — five producers, one ledger).
+O projeto começou com o **Context Ledger**, um índice append-only de sinais. Agora documenta o fluxo completo ao redor dele. O código distribuído continua sendo uma referência pequena do ledger, com produtor sintético e consulta local. Os coletores de produção, os agentes, a infraestrutura de busca e o motor editorial **não são instalados por este repositório**.
 
+> Estado documentado em **13/09/2026**. Diferenciamos implementação privada verificada, exemplo executável neste repo, piloto manual e proposta ainda não implantada. Não há promessa de captura universal, tempo real ou publicação automática.
+
+## Visão em uma tela
+
+```text
+Fontes autorizadas online/offline
+  reuniões · mensagens · email · agenda · gravações · acervo
+                  |
+        captura e original privado
+                  |
+       +----------+--------------+
+       |                         |
+ ledger: o que entrou     catálogo: localizar o corpo
+       +------------+------------+
+                    |
+       abrir fonte e interpretar com evidência
+                    |
+       +------------+-----------------------+
+       |            |                       |
+ operação       contexto pessoal       conhecimento/ideia
+ dono/prazo     destino separado       autoria + hipótese
+       |            |                       |
+ fonte canônica e memória          caderno para pensar/escrever
+                                            |
+                               escolha humana + produção + revisão
+                                            |
+                                  publicação autorizada e verificada
 ```
-source A (meetings API) ─┐
-source B (chat export)  ─┤
-source C (email scan)   ─┼──► ContextItem (6 fields) ──► context-ledger.jsonl ──► windowed query
-source D (calendar)     ─┘          append-only, dedupe by ref                ("what arrived this week?")
+
+A seta entre contextos **não representa permissão automática de transferência**. Uma conversa pode ter várias utilidades; isso não autoriza espelhar seu corpo entre ambientes.
+
+## Por onde começar
+
+- **Sócio ou liderança:** [arquitetura e decisões](docs/arquitetura.md), [motor de ideias](docs/motor-de-ideias.md) e [o que está pronto](docs/estado-e-limites.md).
+- **Quem vai implementar:** [captura e recuperação](docs/captura-e-recuperacao.md), [ambientes e governança](docs/ambientes-e-governanca.md), [operação e verificação](docs/operacao-e-verificacao.md).
+- **Quem vai editar conteúdo:** [motor de ideias](docs/motor-de-ideias.md), [produção e Atlas](docs/producao-e-atlas.md), [ficha de ideia](templates/ficha-de-ideia.md).
+- **Quem quer entender as habilidades de análise:** [mapa de skills e extração de aprendizados](docs/mapa-de-skills.md).
+- **Quem quer executar o código disponível:** o exemplo abaixo e [limites do ledger de referência](docs/estado-e-limites.md).
+- **Quem vai usar outro agente para estudar o repo:** [roteiro de leitura e avaliação](docs/como-estudar-e-reproduzir.md).
+
+## Experimento local reproduzível
+
+Requisito recomendado: **Python 3.10+**, biblioteca padrão. A revisão desta atualização foi executada com Python 3.11; não é uma matriz de compatibilidade de todas as versões.
+
+Na raiz de um clone, em shell POSIX:
+
+```sh
+git clone https://github.com/pixel-educacao/agent-context-hub.git
+cd agent-context-hub
+export CONTEXT_LEDGER_TZ=UTC
+DEMO_DIR="$(mktemp -d)"
+export LEDGER_PATH="$DEMO_DIR/demo-ledger.jsonl"
+python3 reference/example_producer.py
+python3 reference/example_producer.py
+python3 reference/ledger_query.py --since 7d
+python3 reference/test_ledger.py
+python3 -m unittest discover -s tests -v
+python3 tools/check_docs.py
 ```
 
-## Why a ledger and not just a database?
+O produtor usa **três registros sintéticos**, não lê nenhuma conta. A primeira execução deve adicionar três; a segunda deve ignorar os mesmos três por `ref`. A consulta usa exatamente o arquivo das duas execuções, fora do Git. O teste de integração confere esses resultados, o contrato de seis campos, a janela temporal e o filtro de consulta.
 
-1. **Capture must be cheap and dumb.** Producers append one line per signal, no interpretation. If capture needs an LLM or a judgment call, it will silently rot the index.
-2. **Raw ≠ memory.** The ledger is a *map* of what arrived. The actual content stays at the source (or in a raw queue your semantic index must never touch). Analysis happens at read time, on demand.
-3. **Dedupe makes every producer re-runnable.** Pull-based capture with stable refs means reruns, backfills, and restarts are all safe by construction.
+Não coloque tokens no exemplo. Para uma integração real, primeiro implemente autenticação, escopo, paginação, armazenamento privado e recuperação de falhas. O exemplo não contém esses controles.
 
-## Repo contents
+## O contrato original do ledger
 
-| Path | What |
+Seis campos por entrada:
+
+| Campo | Significado |
 |---|---|
-| [`reference/context_ledger.py`](reference/context_ledger.py) | The ledger: schema, deterministic classifier, append with dedupe |
-| [`reference/ledger_query.py`](reference/ledger_query.py) | Windowed query CLI (`--since 7d --who <name>`) |
-| [`reference/example_producer.py`](reference/example_producer.py) | Minimal producer showing the hook pattern |
-| [`reference/test_ledger.py`](reference/test_ledger.py) | Smoke tests (schema, dedupe, classifier order) |
-| [`lessons/`](lessons/) | The production lessons, organized by theme |
+| `ts` | Timestamp ISO com timezone. No exemplo, horário do append se não informado. |
+| `source` | Identificador do produtor. |
+| `who` | Remetente ou rótulo fornecido pelo produtor, sem inventar identidade. |
+| `who_kind` | `person`, `tool`, `transactional` ou `unknown`. Heurística determinística. |
+| `excerpt` | Trecho sem interpretação, truncado em aproximadamente 200 caracteres. |
+| `ref` | Referência estável para dedupe e rastreamento até a fonte. |
 
-## 5-minute start
+- Capturar sem interpretação editorial. Identificar o tipo de remetente não equivale a decidir assunto, destino ou mérito.
+- Não carregar o ledger inteiro no contexto do agente. Consultar janela e depois abrir as fontes necessárias.
+- Não adicionar campos só porque parecem úteis; exigir uma consulta real que precise deles.
+- Deduplicar eventos não resolve sozinho dedupe de fatos, pessoas, obras ou versões de transcrição.
+- Append-only conserva a trilha. Correções precisam de nova referência versionada e relação explícita com o registro anterior no sistema que as consome; este exemplo não reconcilia correções automaticamente.
 
-```bash
-cd reference
-python3 context_ledger.py            # self-smoke: classifier checks
-python3 example_producer.py          # appends 3 synthetic signals
-LEDGER_PATH=./demo-ledger.jsonl python3 ledger_query.py --since 7d
-python3 test_ledger.py               # all smoke tests
-```
+## O que há neste repo
 
-That's the whole loop: **capture → ledger → windowed query**. Add real producers by copying `example_producer.py` and pointing it at your source.
+- `reference/`: ledger, consulta e produtor sintético, com smoke tests.
+- `docs/`: arquitetura, ambientes, ingestão, memória, operação, ideias, produção e limites.
+- `templates/`: ficha vazia para testar o método editorial manualmente.
+- `tests/`: integração do exemplo via CLI, sem rede.
+- `tools/check_docs.py`: validação de links locais e higiene básica dos arquivos de documentação. Não substitui revisão de privacidade nem scanner especializado de segredos.
+- `lessons/`: lições originais do ledger, preservadas como contexto histórico.
 
-## The contract (what never changes)
+## Lições originais
 
-Six fixed fields per entry:
+1. [Ordem do classificador](lessons/01-classifier-order.md): transacional antes de regras genéricas de ferramentas.
+2. [Hooks nos produtores](lessons/02-producer-hooks.md): capturar a referência junto da escrita do original.
+3. [Orçamento de contexto](lessons/03-context-budget.md): recuperar recortes, não despejar arquivos inteiros.
+4. [Higiene do índice](lessons/04-index-hygiene.md): raw e fila não entram por acidente no índice documental.
+5. [Crescimento](lessons/05-growth.md): há custo na leitura integral por append; o número aproximado da nota não é benchmark ou SLA.
+6. [Consulta primeiro](lessons/06-query-first.md): um índice precisa responder uma pergunta desde o primeiro dia.
 
-| Field | Meaning |
-|---|---|
-| `ts` | ISO timestamp, local timezone |
-| `source` | producer id (`gmail`, `whatsapp`, `granola`, `fathom`, `calendar`, …) |
-| `who` | sender exactly as it arrived |
-| `who_kind` | `person` \| `tool` \| `transactional` \| `unknown` (deterministic) |
-| `excerpt` | raw text, ~200 chars, never interpreted |
-| `ref` | stable id for dedupe + tracing back to the original |
+Essas notas tratam da referência inicial, não certificam segurança de concorrência ou cobertura dos novos componentes. Consulte [estado e limites](docs/estado-e-limites.md) antes de reutilizar o código em produção.
 
-Design locks (from production):
+## Segurança e permissão
 
-- **Append-only.** Corrections are new rows, never edits.
-- **Dedupe by `ref`.** Re-pulling a source must never duplicate.
-- **No interpretation at capture.** The excerpt is raw text; classification is a deterministic denylist + heuristic, never an LLM call.
-- **New fields only when a real query demands them.** Every speculative field you add is a lie you'll maintain forever.
+Este é um repo **público** de padrões e exemplos. Não recebe transcrições privadas, identidades de participantes, contratos, chaves, configurações de servidores ou corpora pessoais. A matéria-prima privada pode ser preservada com riqueza no ambiente autorizado; a divulgação de qualquer trecho é uma decisão separada.
 
-## Lessons learned
+Capturar não autoriza publicar. Código presente não comprova job ativo. Job ativo não comprova entrega. Cada resultado precisa de recibo proporcional ao risco.
 
-The short version — full write-ups with context in [`lessons/`](lessons/):
+## Licença
 
-1. **[Classifier order is a minefield](lessons/01-classifier-order.md)** — transactional senders (`noreply@latam.com`) must be checked *before* generic tool rules, or airlines become "tools".
-2. [Hook producers at write time, backfill later](lessons/02-producer-hooks.md) — append when you write the raw file; dedupe makes history backfillable.
-3. [Never load the ledger whole](lessons/03-context-budget.md) — windowed queries only; the ledger never enters agent context in full.
-4. [Keep raw queues out of your semantic index](lessons/04-index-hygiene.md) — searchable memory stores the curated; the ledger answers the intake question.
-5. [Growth is bounded by design](lessons/05-growth.md) — 200-char excerpts + dedupe + rotation; the O(n) ref check has a known cliff (~100k rows).
-6. [Query-first, not log-first](lessons/06-query-first.md) — a ledger you can't query on day one is just a log file.
-
-## Requirements
-
-Python 3.9+ standard library only. No dependencies, no server, no database.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+MIT. Veja [LICENSE](LICENSE).
