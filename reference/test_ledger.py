@@ -26,7 +26,8 @@ def test_classifier_order():
     assert cl.classify_who("Fathom", "noreply@fathom.video") == "tool"
     assert cl.classify_who("Support", "support@acme.com") == "tool"
     # persons
-    assert cl.classify_who("Maria Santangelo", "maria@rj.senac.br") == "person"
+    # Fictional identity using a reserved example domain.
+    assert cl.classify_who("Pessoa Exemplo", "pessoa@example.com") == "person"
     assert cl.classify_who("Ana Souza", "") == "person"
     # unknown
     assert cl.classify_who("Blueticket", "") == "unknown"

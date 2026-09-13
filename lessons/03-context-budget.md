@@ -15,7 +15,7 @@ agent needs context → windowed query → small relevant slice
 
 - The only read path is a **windowed query**: `--since 7d`, `--who <name>`, `--since 30d`.
 - The query returns a *digest* (counts by source, top presences, first N items) — not raw rows.
-- When a row matters, follow its `ref` to the original source for full content.
+- When a row matters, follow its `ref` to the original source for full content. **Reference CLI limitation:** the displayed digest does not include each item's `ref` or timestamp. The integrator must retrieve those fields from the matching JSONL row without dumping the whole file into the agent's context. The toy does not include an external-source resolver.
 
 ## The number that convinced us
 

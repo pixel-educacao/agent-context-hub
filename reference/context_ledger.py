@@ -128,7 +128,8 @@ def append_entry(source: str, who: str, excerpt: str, ref: str,
 
 if __name__ == "__main__":
     # smoke test
-    print(classify_who("Maria Santangelo", "maria.santangelo@rj.senac.br"))  # person
+    # Fictional identity using a reserved example domain.
+    print(classify_who("Pessoa Exemplo", "pessoa@example.com"))              # person
     print(classify_who("Fathom", "noreply@fathom.video"))                    # tool
     print(classify_who("LATAM", "noreply@latam.com"))                        # transactional
     print(classify_who("Blueticket", ""))                                    # unknown
