@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Logo Reveal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --page: #E7E4DD;
+    --stage: #F2F1ED;
+    --ink: #15161F;
+    --muted: #55545C;
+    --line: rgba(21, 22, 31, .14);
+    --track: rgba(21, 22, 31, .10);
+    --orange: #FF5100;
+    --on-orange: #05060F;
+    --shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 18px 50px rgba(40, 30, 20, .10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0A0C18;
+      --stage: #05060F;
+      --ink: #F2F1ED;
+      --muted: rgba(242, 241, 237, .78);
+      --line: rgba(242, 241, 237, .12);
+      --track: rgba(242, 241, 237, .10);
+      --shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 80px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0A0C18;
+    --stage: #05060F;
+    --ink: #F2F1ED;
+    --muted: rgba(242, 241, 237, .78);
+    --line: rgba(242, 241, 237, .12);
+    --track: rgba(242, 241, 237, .10);
+    --shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 80px rgba(0,0,0,.6);
+  }
+
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 600 15px/1.5 Manrope, "Helvetica Neue", Arial, sans-serif;
+    padding-inline: 16px;
+    padding-block: 28px 40px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+
+  .eyebrow {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px;
+    font: 500 11.5px/1.4 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+  }
+
+  .stage {
+    position: relative;
+    aspect-ratio: 16 / 9; max-width: 100%;
+    background: var(--stage);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .stage svg { display: block; width: 100%; height: 100%; }
+  #bg { fill: var(--stage); }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
+  button {
+    font: 800 14px/1 Manrope, "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: -.01em;
+    border-radius: 999px; cursor: pointer;
+    padding: 12px 20px;
+    border: 1px solid var(--line);
+    background: transparent; color: var(--ink);
+    display: inline-flex; align-items: center; gap: 9px;
+  }
+  button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+  #play { background: var(--orange); border-color: var(--orange); color: var(--on-orange); }
+  #play:hover { filter: brightness(1.06); }
+  #sound:hover { border-color: var(--muted); }
+  #sound[aria-pressed="false"] { color: var(--muted); }
+  .ico { width: 14px; height: 14px; flex: none; }
+  .time {
+    margin-left: auto;
+    font: 500 13px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums; color: var(--muted);
+  }
+
+  .beats { position: relative; height: 34px; }
+  .beats .rail { position: absolute; left: 0; right: 0; top: 6px; height: 3px; border-radius: 3px; background: var(--track); }
+  .beats .fill { position: absolute; left: 0; top: 6px; height: 3px; border-radius: 3px; background: var(--orange); width: 100%; }
+  .beat { position: absolute; top: 0; transform: translateX(-50%); display: grid; justify-items: center; gap: 5px; }
+  .beat i { width: 1px; height: 15px; background: var(--muted); opacity: .6; }
+  .beat b {
+    font: 500 10.5px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    letter-spacing: .08em; color: var(--muted); white-space: nowrap;
+  }
+  .note { color: var(--muted); max-width: 62ch; margin: 0; font-size: 14px; }
+
+  @media (max-width: 560px) {
+    .beat.sm b { display: none; }
+    .time { margin-left: 0; }
+  }
+
+  /* modo export: palco em tela cheia, sem interface */
+  .export body { padding: 0; background: var(--stage); }
+  .export .wrap { max-width: none; gap: 0; }
+  .export .stage { border: 0; border-radius: 0; box-shadow: none; width: 100vw; height: 100vh; aspect-ratio: auto; }
+  .export .eyebrow, .export .controls, .export .beats, .export .note { display: none; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="eyebrow"><span>Pixel · logo reveal</span><span>1920 × 1080 · 6 s</span></div>
+
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 1920 1080" role="img" aria-label="Animação: uma bolinha laranja se multiplica até formar o símbolo da Pixel, e a palavra pixel aparece ao lado">
+      <defs>
+        <radialGradient id="glowGrad">
+          <stop offset="0" stop-color="#FF5100" stop-opacity=".55"/>
+          <stop offset=".45" stop-color="#FF5100" stop-opacity=".16"/>
+          <stop offset="1" stop-color="#FF5100" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect id="bg" width="1920" height="1080"/>
+      <g id="symbol">
+        <circle id="glow" cx="250" cy="250" r="520" fill="url(#glowGrad)" opacity="0"/>
+        <g id="rings"></g>
+        <g id="dots"></g>
+      </g>
+      <g id="word" transform="translate(421 402.5) scale(0.55)"></g>
+    </svg>
+  </div>
+
+  <div class="controls">
+    <button id="play" type="button">
+      <svg class="ico" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9.5-5.5z" fill="currentColor"/></svg>
+      <span id="playLabel">Tocar</span>
+    </button>
+    <button id="sound" type="button" aria-pressed="true">
+      <svg class="ico" viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 5h2.5l3.5-3v10l-3.5-3h-2.5z" fill="currentColor"/><path id="waves" d="M9.6 4.4a3.6 3.6 0 0 1 0 5.2M11.3 2.8a6 6 0 0 1 0 8.4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+      <span id="soundLabel">Som ligado</span>
+    </button>
+    <span class="time" id="time">6,00 / 6,00 s</span>
+  </div>
+
+  <div class="beats" id="beats" aria-hidden="true">
+    <div class="rail"></div>
+    <div class="fill" id="fill"></div>
+  </div>
+
+  <p class="note">Uma bolinha nasce no centro e se divide em quatro gerações, 1, 4, 4, 4 e 8, até fechar as 21 do símbolo. O símbolo desliza para a esquerda, a palavra entra letra por letra e o pingo do i cai por último. Os sons são gerados ao vivo no navegador.</p>
+</div>
+
+<script>
+const DOTS=[
+  [169.32,477.99,"M169.323 455.984C181.478 455.984 191.331 465.838 191.331 477.992C191.331 490.147 181.478 500 169.323 500C157.169 500 147.316 490.147 147.316 477.992C147.317 465.838 157.169 455.985 169.323 455.984Z"],
+  [310.66,477.99,"M310.655 455.984C322.81 455.984 332.663 465.838 332.663 477.992C332.663 490.147 322.81 500 310.655 500C298.501 500 288.648 490.147 288.648 477.992C288.649 465.838 298.501 455.985 310.655 455.984Z"],
+  [93.3,397.41,"M103.274 356.606C120.302 356.606 134.104 370.41 134.104 387.438V407.386C134.104 424.413 120.302 438.217 103.274 438.217H83.3252C66.2983 438.217 52.4951 424.413 52.4951 407.386V387.438C52.4951 370.411 66.2983 356.607 83.3252 356.606H103.274Z"],
+  [386.7,397.41,"M398.098 356.606C414.34 356.607 427.506 369.774 427.506 386.016V408.808C427.506 425.05 414.34 438.217 398.098 438.217H375.306C359.064 438.217 345.897 425.05 345.896 408.808V386.016C345.897 369.774 359.064 356.606 375.306 356.606H398.098Z"],
+  [239.98,397.39,"M239.978 368.052C256.179 368.052 269.313 381.186 269.313 397.388C269.313 413.589 256.179 426.723 239.978 426.723C223.776 426.722 210.643 413.589 210.643 397.388C210.643 381.186 223.776 368.052 239.978 368.052Z"],
+  [166.65,324.06,"M172.754 283.257C191.92 283.257 207.456 298.793 207.456 317.959V330.164C207.456 349.33 191.919 364.866 172.754 364.866H160.549C141.384 364.866 125.847 349.329 125.847 330.164V317.959C125.847 298.794 141.383 283.257 160.549 283.257H172.754Z"],
+  [313.35,324.06,"M324.748 283.257C340.99 283.257 354.157 296.423 354.157 312.665V335.457C354.157 351.699 340.99 364.866 324.748 364.866H301.956C285.714 364.866 272.548 351.699 272.548 335.457V312.665C272.548 296.423 285.714 283.257 301.956 283.257H324.748Z"],
+  [22.01,324.04,"M22.0078 302.03C34.162 302.03 44.0154 311.883 44.0156 324.037C44.0156 336.192 34.1622 346.045 22.0078 346.045C9.85333 346.045 0 336.192 0 324.037C0.000259758 311.883 9.85349 302.03 22.0078 302.03Z"],
+  [467.68,324.04,"M467.676 302.03C479.83 302.03 489.683 311.883 489.684 324.037C489.684 336.192 479.83 346.045 467.676 346.045C455.521 346.045 445.669 336.191 445.669 324.037C445.669 311.883 455.522 302.03 467.676 302.03Z"],
+  [239.99,250.7,"M240.004 198.241C268.969 198.241 292.449 221.722 292.449 250.687V250.711C292.449 279.676 268.969 303.157 240.004 303.157H239.979C211.014 303.157 187.533 279.676 187.533 250.711V250.687C187.533 221.722 211.014 198.241 239.979 198.241H240.004Z"],
+  [93.27,250.69,"M93.2744 221.351C109.476 221.351 122.61 234.484 122.61 250.686C122.61 266.887 109.476 280.021 93.2744 280.021C77.0731 280.021 63.9395 266.887 63.9395 250.686C63.9395 234.484 77.0732 221.351 93.2744 221.351Z"],
+  [386.68,250.69,"M386.676 221.351C402.877 221.351 416.011 234.484 416.011 250.686C416.011 266.887 402.877 280.021 386.676 280.021C370.474 280.021 357.341 266.887 357.341 250.686C357.341 234.484 370.474 221.351 386.676 221.351Z"],
+  [166.65,177.36,"M172.754 136.556C191.92 136.556 207.456 152.093 207.456 171.259V183.463C207.456 202.629 191.92 218.166 172.754 218.166H160.549C141.383 218.166 125.847 202.628 125.847 183.463V171.259C125.847 152.093 141.383 136.556 160.549 136.556H172.754Z"],
+  [313.35,177.36,"M319.455 136.556C338.621 136.556 354.157 152.093 354.157 171.259V183.463C354.157 202.628 338.621 218.166 319.455 218.166H307.25C288.084 218.166 272.548 202.629 272.548 183.463V171.259C272.548 152.093 288.084 136.556 307.25 136.556H319.455Z"],
+  [22.01,182.73,"M22.0078 160.72C34.1622 160.72 44.0156 170.573 44.0156 182.728C44.0154 194.882 34.1621 204.734 22.0078 204.734C9.85344 204.734 0.000187616 194.882 0 182.728C0 170.573 9.85333 160.72 22.0078 160.72Z"],
+  [467.68,182.73,"M467.676 160.72C479.83 160.72 489.684 170.573 489.684 182.728C489.683 194.882 479.83 204.734 467.676 204.734C455.522 204.734 445.669 194.882 445.669 182.728C445.669 170.573 455.521 160.72 467.676 160.72Z"],
+  [93.3,104.01,"M103.274 63.2041C120.302 63.2041 134.104 77.008 134.104 94.0352V113.983C134.104 131.011 120.302 144.814 103.274 144.814H83.3252C66.2983 144.814 52.4951 131.01 52.4951 113.983V94.0352C52.4951 77.0082 66.2983 63.2044 83.3252 63.2041H103.274Z"],
+  [386.7,104.01,"M396.676 63.2041C413.703 63.2041 427.506 77.008 427.506 94.0352V113.983C427.506 131.011 413.703 144.814 396.676 144.814H376.727C359.7 144.814 345.896 131.01 345.896 113.983V94.0352C345.896 77.0081 359.7 63.2042 376.727 63.2041H396.676Z"],
+  [239.98,101.51,"M239.978 72.1738C256.179 72.1738 269.313 85.3083 269.313 101.51C269.313 117.711 256.179 130.845 239.978 130.845C223.776 130.845 210.643 117.711 210.643 101.51C210.643 85.3084 223.776 72.174 239.978 72.1738Z"],
+  [169.32,22.01,"M169.323 0C181.478 0 191.331 9.85333 191.331 22.0078C191.331 34.1622 181.478 44.0156 169.323 44.0156C157.169 44.0154 147.316 34.1621 147.316 22.0078C147.316 9.85345 157.169 0.000205144 169.323 0Z"],
+  [310.66,22.01,"M310.655 0C322.81 0 332.663 9.85333 332.663 22.0078C332.663 34.1622 322.81 44.0156 310.655 44.0156C298.501 44.0154 288.649 34.1621 288.648 22.0078C288.648 9.85344 298.501 0.00018865 310.655 0Z"]
+];
+const WORD={
+  l:"M1958.49 357.075H1891.36V41.5414C1891.36 26.6471 1887.34 15.5006 1879.43 8.40887C1872.17 1.89869 1861.99 -0.847546 1849.19 0.234793L1789.28 5.28301C1785.08 5.63841 1781.91 9.01466 1781.91 13.1421V44.0453C1781.91 46.2503 1782.86 48.3746 1784.53 49.8608C1786.19 51.347 1788.44 52.0982 1790.68 51.9043L1837.63 47.8981V357.092H1769.96C1765.51 357.092 1761.89 360.629 1761.89 364.975V395.902C1761.89 400.248 1765.51 403.786 1769.96 403.786H1958.49C1962.94 403.786 1966.56 400.248 1966.56 395.902V364.975C1966.56 360.629 1962.94 357.092 1958.49 357.092V357.075Z",
+  e:"M1616.54 126.044C1576.98 126.044 1543.34 138.604 1519.23 162.375C1494.36 186.897 1481.21 222.081 1481.21 264.123C1481.21 306.164 1492.8 340.387 1514.71 365.661C1526.67 379.457 1541.6 390.143 1559.08 397.428C1577.63 405.158 1599.14 409.075 1623.04 409.075C1661.17 409.075 1691.31 397.921 1712.63 375.927C1732.46 355.467 1741.03 329.604 1745.74 311.932C1746.37 309.565 1745.86 307.093 1744.33 305.163C1742.79 303.224 1740.47 302.11 1737.95 302.11H1701.57C1697.88 302.11 1694.65 304.573 1693.71 308.111C1688.79 327.117 1681.08 340.67 1670.15 349.563C1658.68 358.9 1643.26 363.432 1623.03 363.432C1556.28 363.432 1538.07 318.87 1534.75 280.608H1738.94C1743.38 280.608 1747 277.071 1747 272.725V258.849C1747 218.301 1734.64 184.514 1711.23 161.155C1688.24 138.2 1655.49 126.06 1616.53 126.06L1616.54 126.044ZM1534.57 238.123C1535.78 220.062 1543.87 203.73 1557.5 191.962C1572.46 179.038 1592.88 172.213 1616.54 172.213C1640.2 172.213 1659.66 178.99 1673.29 191.824C1685.62 203.431 1692.65 219.408 1693.68 238.123H1534.57Z",
+  x:"M1372.75 271.949V262.628L1468.85 144.104C1470.78 141.713 1471.15 138.523 1469.78 135.777C1468.43 133.03 1465.64 131.326 1462.52 131.326H1418.02C1415.51 131.326 1413.1 132.497 1411.58 134.46L1334.78 233.866L1257.98 134.46C1256.47 132.497 1254.06 131.326 1251.54 131.326H1207.05C1203.93 131.326 1201.14 133.03 1199.79 135.777C1198.43 138.523 1198.79 141.713 1200.73 144.104L1296.83 262.628V271.949L1200.71 391.007C1198.77 393.397 1198.42 396.588 1199.78 399.334C1201.14 402.072 1203.92 403.776 1207.04 403.776H1251.54C1254.06 403.776 1256.48 402.597 1258 400.626L1334.79 300.736L1411.59 400.634C1413.11 402.605 1415.51 403.776 1418.03 403.776H1462.53C1465.65 403.776 1468.44 402.072 1469.8 399.334C1471.16 396.596 1470.81 393.405 1468.87 391.007L1372.75 271.949Z",
+  iDot:"M1073.15 99.2524C1097.77 99.2524 1117.06 80.8688 1117.06 57.3966C1117.06 33.9244 1097.37 16.0739 1073.15 16.0739C1048.93 16.0739 1029.24 34.2232 1029.24 57.3966C1029.24 80.5699 1048.12 99.2524 1073.15 99.2524Z",
+  iStem:"M1173.37 357.075H1105.7V162.61C1105.7 149.904 1102.12 140.252 1095.06 133.911C1088.07 127.636 1078 124.994 1065.15 126.061L1005.77 131.109C1001.58 131.464 998.402 134.84 998.402 138.968V169.871C998.402 172.076 999.353 174.192 1001.02 175.687C1002.69 177.181 1004.92 177.924 1007.18 177.73L1054.13 173.724V357.091H986.468C982.021 357.091 978.401 360.629 978.401 364.975V395.902C978.401 400.248 982.021 403.785 986.468 403.785H1173.38C1177.83 403.785 1181.45 400.248 1181.45 395.902V364.975C1181.45 360.629 1177.83 357.091 1173.38 357.091L1173.37 357.075Z",
+  p:"M830.133 126.044C799.726 126.044 775.931 130.584 757.376 139.913C743.697 146.795 731.506 162.303 725.539 176.438C724.58 178.707 720.943 177.795 720.943 175.339V139.21C720.943 134.857 717.331 131.327 712.876 131.327H674.733C670.278 131.327 666.667 134.857 666.667 139.21V492.109C666.667 496.463 670.278 499.992 674.733 499.992H712.876C717.331 499.992 720.943 496.463 720.943 492.109V360.524C720.943 358.061 724.596 357.366 725.547 359.644C731.134 373.044 742.713 388.164 755.574 394.82C774.096 404.399 798.486 409.06 830.133 409.06C869.251 409.06 902.799 394.997 927.148 368.391C950.464 342.916 963.308 307.199 963.308 267.815C963.308 184.337 908.544 126.036 830.133 126.036V126.044ZM909.031 267.815C909.031 299.307 900.278 323.531 883.021 339.798C867.367 354.563 844.588 362.366 817.148 362.366C789.708 362.366 765.814 354.66 749.185 340.081C730.448 323.652 720.943 299.34 720.943 267.823C720.943 236.306 730.448 211.598 749.193 195.096C765.798 180.476 789.303 172.747 817.148 172.747C844.993 172.747 867.375 180.573 883.013 195.371C900.278 211.711 909.023 236.088 909.023 267.823L909.031 267.815Z"
+};
+
+
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const DURATION = 6;
+  const $ = (id) => document.getElementById(id);
+
+  if (/[?&]export/.test(location.search)) {
+    document.documentElement.classList.add("export");
+    const th = location.search.match(/theme=(\w+)/);
+    if (th) document.documentElement.setAttribute("data-theme", th[1]);
+  }
+
+  // ---------- easing ----------
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const prog = (t, start, dur) => clamp((t - start) / dur);
+  const backOut = (k, s = 1.70158) => { k -= 1; return k * k * ((s + 1) * k + s) + 1; };
+  const cubicInOut = (k) => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+  const quadOut = (k) => 1 - (1 - k) * (1 - k);
+  // pulso de 0 → 1 → 0 em "dur" segundos
+  const bump = (t, start, dur) => { const k = prog(t, start, dur); return k <= 0 || k >= 1 ? 0 : Math.sin(Math.PI * k); };
+
+  // ---------- estrutura do símbolo ----------
+  const C = { x: DOTS[9][0], y: DOTS[9][1] };             // bolinha central
+  const GEN_T = [0.30, 0.95, 1.40, 1.80, 2.15];            // quando cada geração nasce
+  const STAGGER = [0, 0.05, 0.05, 0.05, 0.035];
+  const TRAVEL = 0.5;
+  const CENTER_SCALE = [0.2, 0.45, 0.66, 0.84, 1];         // a bolinha central cresce a cada divisão
+
+  const dots = DOTS.map(([cx, cy, d], i) => {
+    const dist = Math.hypot(cx - C.x, cy - C.y);
+    const gen = dist < 1 ? 0 : dist < 120 ? 1 : dist < 170 ? 2 : dist < 215 ? 3 : 4;
+    return { i, cx, cy, d, dist, gen, angle: Math.atan2(cy - C.y, cx - C.x) };
+  });
+  for (const dot of dots) {
+    if (dot.gen === 0) continue;
+    const prev = dots.filter((o) => o.gen === dot.gen - 1);
+    dot.parent = prev.reduce((best, o) =>
+      Math.hypot(o.cx - dot.cx, o.cy - dot.cy) < Math.hypot(best.cx - dot.cx, best.cy - dot.cy) ? o : best);
+  }
+  for (let g = 1; g <= 4; g++) {
+    const sib = dots.filter((o) => o.gen === g)
+      .sort((a, b) => ((a.angle + 2.4) % (2 * Math.PI)) - ((b.angle + 2.4) % (2 * Math.PI)));
+    sib.forEach((o, k) => { o.born = GEN_T[g] + k * STAGGER[g]; o.order = k; });
+  }
+  dots[9].born = GEN_T[0];
+  for (const dot of dots) {
+    dot.kids = dots.filter((o) => o.parent === dot).map((o) => o.born);
+    const el = document.createElementNS(NS, "path");
+    el.setAttribute("d", dot.d);
+    el.setAttribute("fill", "#FF5100");
+    $("dots").appendChild(el);
+    dot.el = el;
+  }
+  const rings = GEN_T.slice(1).map((t, k) => {
+    const el = document.createElementNS(NS, "circle");
+    el.setAttribute("cx", C.x); el.setAttribute("cy", C.y);
+    el.setAttribute("fill", "none"); el.setAttribute("stroke", "#FF5100");
+    $("rings").appendChild(el);
+    return { t, reach: [135, 185, 235, 290][k], el };
+  });
+
+  // ---------- palavra ----------
+  const LETTERS = [
+    ["p", 3.55], ["iStem", 3.65], ["x", 3.75], ["e", 3.85], ["l", 3.95],
+  ];
+  const DOT_DROP = 4.12, DOT_LAND = 4.45;
+  const letters = {};
+  for (const name of ["p", "iStem", "iDot", "x", "e", "l"]) {
+    const g = document.createElementNS(NS, "g");
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", WORD[name]);
+    p.setAttribute("fill", "#FF5100");
+    g.appendChild(p);
+    $("word").appendChild(g);
+    letters[name] = { g, p };
+  }
+  for (const name in letters) {
+    const b = letters[name].p.getBBox();
+    letters[name].ox = b.x + b.width / 2;
+    letters[name].oy = b.y + b.height;
+  }
+
+  // ---------- layout ----------
+  const S = 0.55;                                       // escala do lockup final
+  const FINAL = { x: 421 + 250 * S, y: 402.5 + 250 * S, s: S };
+  const INTRO = { x: 960, y: 540, s: S * 1.35 };
+  const SLIDE_T = 3.2, SLIDE_D = 0.62;
+  const SETTLE_T = 2.95;
+
+  function centerScale(t) {
+    let s = 0;
+    const a = prog(t, GEN_T[0], 0.42);
+    s = CENTER_SCALE[0] * backOut(a, 2.6);
+    for (let g = 1; g <= 4; g++) {
+      const k = prog(t, GEN_T[g], 0.3);
+      s += (CENTER_SCALE[g] - CENTER_SCALE[g - 1]) * backOut(k, 2.2);
+    }
+    // antes da primeira divisão: respira, como se estivesse carregando
+    const charge = prog(t, GEN_T[0] + 0.35, GEN_T[1] - GEN_T[0] - 0.35);
+    if (charge > 0 && charge < 1) s *= 1 + 0.10 * Math.sin(charge * Math.PI * 3.5) * charge;
+    return s;
+  }
+
+  function render(t) {
+    t = clamp(t, 0, DURATION);
+
+    // símbolo: posição/escala do grupo
+    const k = cubicInOut(prog(t, SLIDE_T, SLIDE_D));
+    const settle = 1 + 0.045 * bump(t, SETTLE_T, 0.31);
+    const gx = lerp(INTRO.x, FINAL.x, k), gy = lerp(INTRO.y, FINAL.y, k);
+    const gs = lerp(INTRO.s, FINAL.s, k) * settle;
+    $("symbol").setAttribute("transform", `translate(${gx} ${gy}) scale(${gs}) translate(-250 -250)`);
+
+    // flash de virada: sobe em .16s, cai em .75s
+    const up = prog(t, SETTLE_T, 0.16), down = prog(t, SETTLE_T + 0.16, 0.75);
+    $("glow").setAttribute("opacity", (up * (1 - quadOut(down))).toFixed(3));
+
+    // bolinhas
+    for (const dot of dots) {
+      let x = dot.cx, y = dot.cy, s;
+      if (dot.gen === 0) {
+        s = centerScale(t);
+      } else {
+        const m = prog(t, dot.born, TRAVEL);
+        if (t < dot.born) { dot.el.setAttribute("visibility", "hidden"); continue; }
+        const e = backOut(m, 1.9);
+        x = lerp(dot.parent.cx, dot.cx, e);
+        y = lerp(dot.parent.cy, dot.cy, e);
+        s = lerp(0.3, 1, backOut(m, 2.4));
+      }
+      // cada mãe dá um "soluço" quando uma filha sai dela
+      let kick = 0;
+      for (const kb of dot.kids) kick = Math.max(kick, bump(t, kb, 0.18));
+      s *= 1 + 0.16 * kick;
+      dot.el.setAttribute("visibility", s > 0.001 ? "visible" : "hidden");
+      dot.el.setAttribute("transform", `translate(${x} ${y}) scale(${Math.max(s, 0)}) translate(${-dot.cx} ${-dot.cy})`);
+    }
+
+    // anéis de onda a cada divisão
+    for (const r of rings) {
+      const m = prog(t, r.t - 0.02, 0.55);
+      if (m <= 0 || m >= 1) { r.el.setAttribute("visibility", "hidden"); continue; }
+      r.el.setAttribute("visibility", "visible");
+      r.el.setAttribute("r", (20 + r.reach * quadOut(m)).toFixed(1));
+      r.el.setAttribute("stroke-width", (7 * (1 - m) + 0.5).toFixed(2));
+      r.el.setAttribute("opacity", (0.5 * (1 - m)).toFixed(3));
+    }
+
+    // letras
+    for (const [name, start] of LETTERS) {
+      const L = letters[name], m = prog(t, start, 0.45);
+      const e = backOut(m, 2.2);
+      const dy = (1 - e) * 70, sc = lerp(0.55, 1, e);
+      L.g.setAttribute("opacity", clamp(m * 3).toFixed(3));
+      L.g.setAttribute("transform", `translate(${L.ox} ${L.oy + dy}) scale(${sc}) translate(${-L.ox} ${-L.oy})`);
+    }
+    // pingo do i: cai do alto, quica e assenta
+    {
+      const L = letters.iDot;
+      let dy;
+      if (t < DOT_LAND) { const f = prog(t, DOT_DROP, DOT_LAND - DOT_DROP); dy = -520 * (1 - f * f); }
+      else { const b = prog(t, DOT_LAND, 0.28); dy = -60 * Math.sin(Math.PI * b) * (b < 1 ? 1 : 0); }
+      const land = bump(t, DOT_LAND, 0.14) + 0.5 * bump(t, DOT_LAND + 0.28, 0.1);
+      const sx = 1 + 0.28 * land, sy = 1 - 0.24 * land;
+      L.g.setAttribute("opacity", t >= DOT_DROP ? 1 : 0);
+      L.g.setAttribute("transform", `translate(${L.ox} ${L.oy + dy}) scale(${sx} ${sy}) translate(${-L.ox} ${-L.oy})`);
+    }
+
+    $("time").textContent = `${t.toFixed(2).replace(".", ",")} / 6,00 s`;
+    $("fill").style.width = (t / DURATION * 100) + "%";
+  }
+
+  // ---------- trilha de batidas ----------
+  const BEATS = [
+    [GEN_T[0], "1", 1], [GEN_T[1], "×4", 0], [GEN_T[2], "×4", 0], [GEN_T[3], "×4", 0], [GEN_T[4], "×8", 1],
+    [SLIDE_T, "desliza", 1], [LETTERS[0][1], "p", 0], [DOT_LAND, "pingo", 1],
+  ];
+  for (const [bt, label, big] of BEATS) {
+    const el = document.createElement("div");
+    el.className = "beat" + (big ? "" : " sm");
+    el.style.left = (bt / DURATION * 100) + "%";
+    el.innerHTML = `<i></i><b>${label}</b>`;
+    $("beats").appendChild(el);
+  }
+
+  // ---------- som (Web Audio, tudo sintetizado) ----------
+  function makeNoise(ctx, seconds) {
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * seconds), ctx.sampleRate);
+    const ch = buf.getChannelData(0);
+    let seed = 7;
+    for (let i = 0; i < ch.length; i++) { seed = (seed * 16807) % 2147483647; ch[i] = seed / 1073741823.5 - 1; }
+    return buf;
+  }
+
+  function buildBus(ctx, out) {
+    const master = ctx.createGain(); master.gain.value = 0.9;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
+    // eco curto para dar corpo
+    const send = ctx.createGain(); send.gain.value = 0.22;
+    const delay = ctx.createDelay(1); delay.delayTime.value = 0.13;
+    const fb = ctx.createGain(); fb.gain.value = 0.3;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3200;
+    master.connect(comp); master.connect(send);
+    send.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(comp);
+    comp.connect(out);
+    return master;
+  }
+
+  function schedule(ctx, bus, t0) {
+    const env = (g, at, peak, attack, decay) => {
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(peak, at + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + attack + decay);
+    };
+    // bolha: seno que sobe rápido
+    const pop = (at, f, peak = 0.35, len = 0.14, pan = 0) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), p = ctx.createStereoPanner();
+      o.type = "sine";
+      o.frequency.setValueAtTime(f * 0.55, at);
+      o.frequency.exponentialRampToValueAtTime(f * 1.25, at + 0.045);
+      o.frequency.exponentialRampToValueAtTime(f, at + len);
+      env(g, at, peak, 0.004, len);
+      p.pan.value = pan;
+      o.connect(g); g.connect(p); p.connect(bus);
+      o.start(at); o.stop(at + len + 0.05);
+    };
+    // "tok" de marimba para as letras
+    const tok = (at, f, peak = 0.3) => {
+      for (const [mul, amp, dec] of [[1, 1, 0.28], [3.98, 0.35, 0.07]]) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = f * mul;
+        env(g, at, peak * amp, 0.003, dec);
+        o.connect(g); g.connect(bus); o.start(at); o.stop(at + dec + 0.05);
+      }
+    };
+    const thump = (at, peak = 0.5) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(180, at);
+      o.frequency.exponentialRampToValueAtTime(55, at + 0.16);
+      env(g, at, peak, 0.004, 0.2);
+      o.connect(g); g.connect(bus); o.start(at); o.stop(at + 0.3);
+    };
+    const whoosh = (at, len) => {
+      const src = ctx.createBufferSource(); src.buffer = makeNoise(ctx, len + 0.1);
+      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.4;
+      bp.frequency.setValueAtTime(350, at);
+      bp.frequency.exponentialRampToValueAtTime(2600, at + len * 0.55);
+      bp.frequency.exponentialRampToValueAtTime(700, at + len);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.28, at + len * 0.5);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      const p = ctx.createStereoPanner();
+      p.pan.setValueAtTime(0.5, at); p.pan.linearRampToValueAtTime(-0.5, at + len);
+      src.connect(bp); bp.connect(g); g.connect(p); p.connect(bus);
+      src.start(at); src.stop(at + len + 0.05);
+    };
+    const chime = (at) => {
+      for (const [f, amp, dec] of [[1046.5, 0.16, 1.5], [1568, 0.11, 1.3], [2637, 0.06, 1.1], [523.25, 0.1, 1.4]]) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = f;
+        env(g, at, amp, 0.01, dec);
+        o.connect(g); g.connect(bus); o.start(at); o.stop(at + dec + 0.1);
+      }
+    };
+    const glint = (at) => {
+      const src = ctx.createBufferSource(); src.buffer = makeNoise(ctx, 0.5);
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 6000;
+      const g = ctx.createGain(); env(g, at, 0.12, 0.01, 0.35);
+      src.connect(hp); hp.connect(g); g.connect(bus); src.start(at); src.stop(at + 0.45);
+    };
+
+    // 1ª bolinha nasce
+    pop(t0 + GEN_T[0], 330, 0.45, 0.22);
+    // cada filha tem seu estalo; a nota sobe a cada geração (pentatônica)
+    const NOTES = [null, [523.25, 587.33], [659.25, 783.99], [783.99, 880], [1046.5, 1174.66, 1318.5, 1174.66]];
+    for (const dot of dots) {
+      if (!dot.gen) continue;
+      const seq = NOTES[dot.gen];
+      const pan = clamp((dot.cx - 250) / 260, -0.8, 0.8);
+      pop(t0 + dot.born, seq[dot.order % seq.length], dot.gen === 4 ? 0.24 : 0.3, 0.12, pan);
+    }
+    glint(t0 + SETTLE_T);
+    whoosh(t0 + SLIDE_T - 0.08, SLIDE_D + 0.2);
+    const LETTER_NOTES = [392, 440, 523.25, 587.33, 659.25];
+    LETTERS.forEach(([, st], k) => tok(t0 + st + 0.06, LETTER_NOTES[k]));
+    // pingo do i: assobio de queda, pouso e quique
+    {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "triangle";
+      o.frequency.setValueAtTime(1500, t0 + DOT_DROP);
+      o.frequency.exponentialRampToValueAtTime(500, t0 + DOT_LAND);
+      g.gain.setValueAtTime(0.0001, t0 + DOT_DROP);
+      g.gain.exponentialRampToValueAtTime(0.06, t0 + DOT_DROP + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + DOT_LAND);
+      o.connect(g); g.connect(bus); o.start(t0 + DOT_DROP); o.stop(t0 + DOT_LAND + 0.02);
+    }
+    thump(t0 + DOT_LAND, 0.55);
+    pop(t0 + DOT_LAND, 784, 0.3, 0.12);
+    pop(t0 + DOT_LAND + 0.28, 1046.5, 0.16, 0.1);
+    chime(t0 + DOT_LAND + 0.12);
+  }
+
+  // ---------- reprodução ----------
+  let ctx = null, bus = null, run = null, raf = 0, soundOn = true;
+  let startPerf = 0, startAudio = 0, playing = false;
+
+  function now() {
+    if (run && run.audio) return ctx.currentTime - startAudio;
+    return (performance.now() - startPerf) / 1000;
+  }
+  function tick() {
+    const t = now();
+    render(t);
+    if (t < DURATION) raf = requestAnimationFrame(tick);
+    else { playing = false; $("playLabel").textContent = "Tocar de novo"; }
+  }
+  function stopRun() {
+    cancelAnimationFrame(raf);
+    if (run && run.gain) { try { run.gain.disconnect(); } catch (e) {} }
+    run = null;
+  }
+  async function play() {
+    stopRun();
+    let audio = false, gain = null;
+    if (soundOn) {
+      try {
+        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state !== "running") await ctx.resume();
+        if (!bus) bus = buildBus(ctx, ctx.destination);
+        gain = ctx.createGain(); gain.connect(bus);
+        startAudio = ctx.currentTime + 0.06;
+        schedule(ctx, gain, startAudio);
+        audio = true;
+      } catch (e) { audio = false; }
+    }
+    startPerf = performance.now();
+    run = { audio, gain };
+    playing = true;
+    $("playLabel").textContent = "Tocar de novo";
+    tick();
+  }
+
+  $("play").addEventListener("click", play);
+  $("sound").addEventListener("click", () => {
+    soundOn = !soundOn;
+    $("sound").setAttribute("aria-pressed", soundOn);
+    $("soundLabel").textContent = soundOn ? "Som ligado" : "Sem som";
+    $("waves").style.display = soundOn ? "" : "none";
+    if (!soundOn && run && run.gain) { try { run.gain.disconnect(); } catch (e) {} }
+  });
+
+  // estado inicial: o logo pronto, esperando o play
+  render(DURATION);
+
+  // ---------- gancho para exportar vídeo (usado pelo render.mjs) ----------
+  window.__pixel = {
+    DURATION, render,
+    async wav(sampleRate = 48000) {
+      const len = Math.ceil(sampleRate * DURATION);
+      const off = new OfflineAudioContext(2, len, sampleRate);
+      schedule(off, buildBus(off, off.destination), 0);
+      const buf = await off.startRendering();
+      const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      const data = new DataView(new ArrayBuffer(44 + len * 4));
+      const str = (o, s) => { for (let i = 0; i < s.length; i++) data.setUint8(o + i, s.charCodeAt(i)); };
+      str(0, "RIFF"); data.setUint32(4, 36 + len * 4, true); str(8, "WAVE"); str(12, "fmt ");
+      data.setUint32(16, 16, true); data.setUint16(20, 1, true); data.setUint16(22, 2, true);
+      data.setUint32(24, sampleRate, true); data.setUint32(28, sampleRate * 4, true);
+      data.setUint16(32, 4, true); data.setUint16(34, 16, true); str(36, "data"); data.setUint32(40, len * 4, true);
+      for (let i = 0, o = 44; i < len; i++, o += 4) {
+        data.setInt16(o, clamp(L[i], -1, 1) * 32767, true);
+        data.setInt16(o + 2, clamp(R[i], -1, 1) * 32767, true);
+      }
+      const bytes = new Uint8Array(data.buffer);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      return btoa(bin);
+    },
+  };
+})();
+</script>
+
+</body>
+</html>
