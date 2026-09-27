@@ -1,10 +1,11 @@
 # Pin Instagram do Bruno
 
-Vídeo em loop para o pin redondo: foto do Bruno com anel de story, `obrunookamoto` com selo de verificado, nome, QR para o perfil e "Siga no Instagram" com o ícone.
+Imagem (e vídeo opcional) para o pin redondo: foto do Bruno com anel de story, `obrunookamoto` com selo de verificado, nome, QR para o perfil e "Siga no Instagram" com o ícone.
 
 | Arquivo | O que é |
 |---|---|
-| `pin-instagram-bruno.mp4` | 1080×1080, 30 fps, 8 s, sem áudio. O anel de story gira uma volta por loop; o resto fica parado. |
+| `pin-instagram-bruno.png` | **Versão escolhida.** Imagem parada 1080×1080. |
+| `pin-instagram-bruno.mp4` | 1080×1080, 30 fps, 8 s, sem áudio, com o anel de story girando. Alternativa, caso queira movimento. |
 | `index.html` | Fonte do vídeo (foto e fonte Manrope embutidas, funciona offline). |
 | `render.mjs` | Gera o MP4. Aceita outro link: `node render.mjs "https://www.instagram.com/outro" saida.mp4`. |
 
